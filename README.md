@@ -62,7 +62,10 @@ The combination of a powerful dynamic language as Groovy, with the rich semantic
 The pipeline main construct is the `pipeline` block element. Inside any `pipeline` element there will be any number of second-level constructs, being the main ones:
 
 - `agent`: Used to define how the pipeline will be executed. For example, in a specific slave or in a container created from an existing Docker image.
-- `environment`: Used to define pipeline properties. For example, define a container name from the given build number, or define a credential password by reading its value from Jenkins credentials manager.
+- `environment`: Used to define pipeline properties. For example, define a container name from the given build number, or define a credential password by reading its value from Jenkins credentials manager. 
+    
+    Here we can define passworsds i.e.
+    
 - `stages`: The main block, where all stages and steps are defined.
 - `post`: Used to define any post-process activities, like resource cleaning or results publishing.
 
@@ -79,7 +82,7 @@ pipeline {
     }
 
     environment {
-        // properties or environment variables, new or derived
+        // properties or environment variables, new or derived or credentials like we mentioned above.
     }
 
     stages {
@@ -99,7 +102,7 @@ pipeline {
     }
 
     post {
-        // post-process activities, e.g. cleanup or publish
+        // post-process activities, e.g. cleanup or publish. cleaning
     }
 }
 ```
@@ -107,10 +110,10 @@ pipeline {
 Typical steps include the following:
 
 - `echo`: Step to... echo stuff to the console.
-- `sh`: Used to execute any command. Probably the most common one.
+- `sh`: Used to execute any command. Probably the most common one. Valid for windows too
 - `junit`: Used to publish results of unit test execution with JUnit.
-- `archiveArtifacts`: Used to archive any artifact produced during the build.
-- `script`: As the name suggest, it is used to contain any arbitrary block of Groovy code.
+- `archiveArtifacts`: Used to archive any artifact produced during the build. 
+- `script`: As the name suggest, it is used to contain any arbitrary block of Groovy code. Non-declarative. We shouldn't use it.
 
 With the building blocks just explained, as well as others, it is possible to model any continuous integration process.
 
@@ -476,11 +479,11 @@ pipeline {
     }
 
     environment {
-        ORG_NAME = "deors"
+        ORG_NAME = "deors" //push name organization
         APP_NAME = "workshop-pipelines"
         APP_CONTEXT_ROOT = "/"
         APP_LISTENING_PORT = "8080"
-        TEST_CONTAINER_NAME = "ci-${APP_NAME}-${BUILD_NUMBER}"
+        TEST_CONTAINER_NAME = "ci-${APP_NAME}-${BUILD_NUMBER}" //trick for no conflict between containers created
         DOCKER_HUB = credentials("${ORG_NAME}-docker-hub")
     }
     ...
@@ -491,14 +494,14 @@ The network used to create the builder container should be the same where the te
 
 The property `DOCKER_HUB` will hold the value of the credentials needed to push images to Docker Hub (or to any other Docker registry). The credentials are stored in Jenkins credential manager, and injected into the pipeline with the `credentials` function. This is a very elegant and clean way to inject credentials as well as any other secret, without hard-coding them (and catastrophically storing them in version control).
 
-As the build is currently configured, it will run completely clean every time, including the acquisition of dependencies by Maven. In those cases in which it is not advisable to download all dependencies in every build, for example because build execution time is more critical than ensuring that dependencies remain accessible, builds can be accelerated by caching dependencies (the local Maven repository) in a volume:
+As the build is currently configured, it will run completely clean every time, including the acquisition of dependencies by Maven. In those cases in which it is not advisable to download all dependencies in every build, for example because build execution time is more critical than ensuring that dependencies remain accessible, builds can be accelerated by caching dependencies (the local Maven repository) in a volume:(we can download once a time dependencies, so we can have a process that every sunday night deletes de volume created in the script)
 
 ```groovy
     ...
     agent {
         docker {
             image 'adoptopenjdk/openjdk11:jdk-11.0.2.9'
-            args '--network ci --mount type=volume,source=ci-maven-home,target=/root/.m2'
+            args '--network ci --mount type=volume,source=ci-maven-home,target=/root/.m2' //dependecy caching
         }
     }
     ...
@@ -522,8 +525,8 @@ The first four stages will take care of compilation, unit tests, muration tests 
             steps {
                 echo "-=- execute unit tests -=-"
                 sh "./mvnw test"
-                junit 'target/surefire-reports/*.xml'
-                jacoco execPattern: 'target/jacoco.exec'
+                junit 'target/surefire-reports/*.xml' //test results
+                jacoco execPattern: 'target/jacoco.exec' //coberture results
             }
         }
 
